@@ -1,4 +1,4 @@
-	let
+let
   conf_src = import ./config.nix;
 
   nixos = import <nixpkgs/nixos> { configuration = conf_src; };
@@ -8,24 +8,24 @@
   baseKernel = pkgs.linuxKernel.packageAliases.linux_latest.kernel;
   manualConfig = pkgs.linuxKernel.manualConfig;
 
-in {
-  # Maybe we want to simply override the kernel defconfig (ie: "tinyconfig")
-  # Then use structuredExtraConfig for the rest?
+in rec {
+  kconfig = pkgs.callPackage ./generate-config.nix {
+    inherit (baseKernel) src version;
 
-  kernel = manualConfig {
-      inherit (pkgs) stdenv lib;
-      inherit (baseKernel) src version;
-
-      configfile = pkgs.linuxKernel.linuxConfig {
-        makeTarget = "tinyconfig";
-        src = baseKernel.src;
-      };
-      allowImportFromDerivation = true;
+    structuredExtraConfig = import ./kernel_config.nix { inherit pkgs; };
   };
-  pkgs = pkgs; # needed for nix-shell
+
+  kbuildFn = pkgs.callPackage <nixpkgs/pkgs/os-specific/linux/kernel/manual-config.nix> { inherit (pkgs) buildPackages;  };
+  kernel = ((kbuildFn) {
+    inherit (pkgs) lib stdenv;
+    inherit (baseKernel) src version modDirVersion;
+    configfile = kconfig;
+  }).overrideAttrs (oldAttrs: {
+    postInstall = ''cp vmlinux $out/'';
+  });
+
 
   toplevel = config.system.build.toplevel;
-
   squashfs = pkgs.callPackage <nixpkgs/nixos/lib/make-squashfs.nix> {
     storeContents = [ config.system.build.toplevel ];
   };
