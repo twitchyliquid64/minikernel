@@ -45,9 +45,9 @@ with pkgs.lib.kernel; {
       SECCOMP = yes;
       SECCOMP_FILTER = yes;
       VETH = yes;
-      TUN = yes;
-      VXLAN = yes;
-      IPVLAN = yes;
+      # TUN = yes;
+      # VXLAN = yes;
+      # IPVLAN = yes;
 
       GENERIC_IRQ_PROBE = yes;
       GENERIC_IRQ_SHOW = yes;
@@ -88,10 +88,10 @@ with pkgs.lib.kernel; {
 
       BLOCK = yes;
       BLK_DEV = yes;
-      BLK_DEV_SD = yes;
-      BLK_DEV_SR = yes;
-      CHR_DEV_SG = yes;
-      ISCSI_TCP = yes;
+      # BLK_DEV_SD = yes;
+      # BLK_DEV_SR = yes;
+      # CHR_DEV_SG = yes;
+      # ISCSI_TCP = yes;
       SCSI_LOWLEVEL = yes;
 
       PARTITION_ADVANCED = yes;
@@ -137,39 +137,39 @@ with pkgs.lib.kernel; {
       NET_PTP_CLASSIFY = yes;
       NETWORK_PHY_TIMESTAMPING = yes;
       IP_SET = yes;
-      WIREGUARD = yes;
+      # WIREGUARD = yes;
       BLK_DEV_NBD = yes;
       NET_9P = yes;
 
-      NF_TABLES = yes;
-      NETFILTER = yes;
-      NETFILTER_ADVANCED = yes;
-      NETFILTER_INGRESS = yes;
-      NETFILTER_EGRESS = yes;
-      NETFILTER_NETLINK_LOG = yes;
-      NETFILTER_XTABLES = yes;
-      NF_CONNTRACK = yes;
-      NF_LOG_SYSLOG = yes;
-      NF_SOCKET_IPV4 = yes;
-      NF_LOG_IPV4 = yes;
-      NF_REJECT_IPV4 = yes;
-      NF_SOCKET_IPV6 = yes;
-      NF_REJECT_IPV6 = yes;
-      NF_LOG_IPV6 = yes;
-      IP_NF_IPTABLES = yes;
-      IP6_NF_IPTABLES = yes;
-      BPFILTER = yes;
+      # NF_TABLES = yes;
+      # NETFILTER = yes;
+      # NETFILTER_ADVANCED = yes;
+      # NETFILTER_INGRESS = yes;
+      # NETFILTER_EGRESS = yes;
+      # NETFILTER_NETLINK_LOG = yes;
+      # NETFILTER_XTABLES = yes;
+      # NF_CONNTRACK = yes;
+      # NF_LOG_SYSLOG = yes;
+      # NF_SOCKET_IPV4 = yes;
+      # NF_LOG_IPV4 = yes;
+      # NF_REJECT_IPV4 = yes;
+      # NF_SOCKET_IPV6 = yes;
+      # NF_REJECT_IPV6 = yes;
+      # NF_LOG_IPV6 = yes;
+      # IP_NF_IPTABLES = yes;
+      # IP6_NF_IPTABLES = yes;
+      # BPFILTER = yes;
       # TODO: Rest of netfilter
 
 
       NETDEVICES = yes;
       NET_CORE = yes;
 
-      SECURITY = yes;
-      SECURITYFS = yes;
-      SECURITY_NETWORK = yes;
-      SECURITY_PATH = yes;
-      SECURITY_LANDLOCK = yes;
+      # SECURITY = yes;
+      # SECURITYFS = yes;
+      # SECURITY_NETWORK = yes;
+      # SECURITY_PATH = yes;
+      # SECURITY_LANDLOCK = yes;
 
       PRINTK = yes;
       SERIAL_8250 = yes;
@@ -219,26 +219,23 @@ with pkgs.lib.kernel; {
       COMPILE_TEST = no;
       WERROR = yes;
 
-      # Prevent explosions
-      #MODULES = yes;
-
       # Filesystems
-      EXT2_FS = yes;
-      EXT3_FS = yes;
+      # EXT2_FS = yes;
+      # EXT3_FS = yes;
       EXT4_FS = yes;
       EXT4_FS_POSIX_ACL = yes;
       EXT4_FS_SECURITY = yes;
-      FUSE_FS = yes;
-      CUSE = yes;
+      # FUSE_FS = yes;
+      # CUSE = yes;
       OVERLAY_FS = yes;
-      FS_ENCRYPTION = yes;
+      # FS_ENCRYPTION = yes;
       FSNOTIFY = yes;
       DNOTIFY = yes;
       INOTIFY_USER = yes;
       FANOTIFY = yes;
-      MSDOS_FS = yes;
-      VFAT_FS = yes;
-      EXFAT_FS = yes;
+      # MSDOS_FS = yes;
+      # VFAT_FS = yes;
+      # EXFAT_FS = yes;
 
       PROC_FS = yes;
       PROC_CHILDREN = yes;
