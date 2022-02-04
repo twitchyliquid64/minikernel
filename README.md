@@ -1,11 +1,16 @@
+## Test instructions
+
 ```
-nix-build --show-trace --cores 24 -A kernel
+nix-build --show-trace --cores 24 -A demo-files
+sudo ip tuntap add mode tap test0 || true
 firecracker --no-api --config-file firecracker_config.json
 ```
 
+## Useful commands
 
+```
 nix-build -A kernel
 nix-instantiate -A kernel
 
-nix-shell -E 'with import ./default.nix; kernel.overrideAttrs (o: {nativeBuildInputs=o.nativeBuildInputs ++ [ pkgs.pkg-config pkgs.ncurses ];})'
 nix repl default.nix
+```
