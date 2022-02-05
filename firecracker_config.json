@@ -21,5 +21,11 @@
       "rx_rate_limiter": null,
       "tx_rate_limiter": null
     }
-  ]
+  ],
+
+  "vsock": {
+    "vsock_id": "fs",
+    "uds_path": "/tmp/nixfs-socket",
+    "guest_cid": 3
+  }
 }

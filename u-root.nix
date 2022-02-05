@@ -40,6 +40,24 @@ in
     source = u-root-source;
     binary = u-root-binary;
 
+    nixfs-connect = ./nixfs-connect.go;
+    bringup = pkgs.writeScriptBin "bringup.sh" ''#!/bbin/elvish
+      # Setup symlinks that most programs expect
+      chmod 666 /dev/{null,urandom}
+      ln -s -f /proc/self/fd /dev/fd
+      ln -s -f /proc/self/fd/0 /dev/stdin
+      ln -s -f /proc/self/fd/1 /dev/stdout
+      ln -s -f /proc/self/fd/2 /dev/stderr
+
+      # Connect to the store
+      mkdir -p /nix/store
+      nixfsconnect /nix/store
+
+      echo 'root:x:0:0:root:/root:/bin/bash' > /etc/passwd
+
+      exec ${pkgs.bashInteractive}/bin/bash -l
+      '';
+
     cpio = stdenv.mkDerivation {
       name = "uroot-cpio";
       buildInputs = [ ];
@@ -52,7 +70,9 @@ in
         mkdir -p $TMPDIR/go/src/{usetup,github.com/u-root}
 
         mv $dir $TMPDIR/go/src/github.com/u-root/u-root
-        
+
+        mkdir nixfsconnect
+        cat ${nixfs-connect} >nixfsconnect/nixfs-connect.go
 
         export GOCACHE=$TMPDIR/go-cache
         export GOPATH="$TMPDIR/go"
@@ -63,8 +83,9 @@ in
 
         ${binary}/u-root -o "$out" \
           -base=/dev/null \
-          -uinitcmd="echo Go Gopher" \
-          core boot
+          -files "${bringup}/bin/bringup.sh:bringup" \
+          -uinitcmd '/bringup' \
+          core boot ./nixfsconnect
       '';
     };
   }
