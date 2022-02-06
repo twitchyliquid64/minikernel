@@ -28,7 +28,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	mnt, err := mount.Mount("9p", flag.Arg(0), "9p", fmt.Sprintf("trans=fd,rfdno=%d,wfdno=%d,cache=loose,ro", fd, fd), 0)
+	mnt, err := mount.Mount("9p", flag.Arg(0), "9p", fmt.Sprintf("version=9p2000.L,trans=fd,rfdno=%d,wfdno=%d,cache=loose,ro", fd, fd), 0)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Mount failed: %v\n", err)
 		os.Exit(1)

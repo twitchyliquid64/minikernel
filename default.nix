@@ -29,10 +29,12 @@
     });
 
     initrd = u-root.cpio;
+    nix-9p = pkgs.callPackage ./nix-9p.nix { };
 
     demo-files = pkgs.linkFarm "demo-files" [
       {name = "vmlinux"; path = "${kernel}/vmlinux"; }
       {name = "bzImage"; path = "${kernel}/bzImage"; }
       {name = "initrd"; path = initrd; }
+      {name = "nix-9p"; path = "${nix-9p}/bin/nix-9p"; }
     ];
   }
