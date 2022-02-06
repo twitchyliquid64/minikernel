@@ -40,7 +40,10 @@ in
     source = u-root-source;
     binary = u-root-binary;
 
-    nixfs-connect = ./nixfs-connect.go;
+    mk-init = ./mk-init.go;
+    innerPath = lib.makeBinPath [pkgs.coreutils pkgs.gnugrep pkgs.openssl pkgs.htop pkgs.util-linux pkgs.findutils
+                                 pkgs.diffutils pkgs.nano pkgs.iproute2 pkgs.iputils
+                ];
     bringup = pkgs.writeScriptBin "bringup.sh" ''#!/bbin/elvish
       # Setup symlinks that most programs expect
       chmod 666 /dev/{null,urandom}
@@ -51,11 +54,11 @@ in
 
       # Connect to the store
       mkdir -p /nix/store
-      nixfsconnect /nix/store
+      mkinit /nix/store
 
       echo 'root:x:0:0:root:/root:/bin/bash' > /etc/passwd
 
-      exec ${pkgs.bashInteractive}/bin/bash -l
+      exec ${pkgs.bash}/bin/bash -c 'PATH=${innerPath} exec ${pkgs.bashInteractive}/bin/bash -l'
       '';
 
     cpio = stdenv.mkDerivation {
@@ -71,8 +74,8 @@ in
 
         mv $dir $TMPDIR/go/src/github.com/u-root/u-root
 
-        mkdir nixfsconnect
-        cat ${nixfs-connect} >nixfsconnect/nixfs-connect.go
+        mkdir mkinit
+        cat ${mk-init} >mkinit/mk-init.go
 
         export GOCACHE=$TMPDIR/go-cache
         export GOPATH="$TMPDIR/go"
@@ -85,7 +88,7 @@ in
           -base=/dev/null \
           -files "${bringup}/bin/bringup.sh:bringup" \
           -uinitcmd '/bringup' \
-          core boot ./nixfsconnect
+          core boot ./mkinit
       '';
     };
   }

@@ -28,6 +28,7 @@
       postInstall = ''cp vmlinux arch/x86/boot/bzImage $out/'';
     });
 
+    mk-minikernel = pkgs.callPackage ./mk-minikernel.nix { };
     initrd = u-root.cpio;
     nix-9p = pkgs.callPackage ./nix-9p.nix { };
 
@@ -36,5 +37,6 @@
       {name = "bzImage"; path = "${kernel}/bzImage"; }
       {name = "initrd"; path = initrd; }
       {name = "nix-9p"; path = "${nix-9p}/bin/nix-9p"; }
+      {name = "mk-minikernel"; path = "${mk-minikernel}/bin/mk-minikernel"; }
     ];
   }

@@ -1,9 +1,7 @@
 ## Test instructions
 
 ```
-nix-build --show-trace --cores 24 -A demo-files
-sudo ip tuntap add mode tap test0 || true
-firecracker --no-api --config-file firecracker_config.json
+sudo $(nix-build --show-trace --cores 24 -A demo-files)/mk-minikernel
 ```
 
 ## Useful commands
