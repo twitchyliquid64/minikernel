@@ -133,7 +133,7 @@ func writeFirecrackerConfig(wd string, nc *netCtlr) error {
 	if err := json.NewEncoder(cf).Encode(map[string]interface{}{
 		"boot-source": map[string]interface{}{
 			"kernel_image_path": *kernelPath,
-			"boot_args":         fmt.Sprintf("console=ttyS0 reboot=k panic=1 pci=off mk-init.IP=%s mk-init.defaultRoute=%s", nc.GuestAddr(), nc.hostAddr.IP.String()),
+			"boot_args":         fmt.Sprintf("console=ttyS0 reboot=k panic=1 i8042.noaux mk-init.IP=%s mk-init.defaultRoute=%s", nc.GuestAddr(), nc.hostAddr.IP.String()),
 			"initrd_path":       *initrdPath,
 		},
 		"drives": []string{},
