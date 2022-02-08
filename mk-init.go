@@ -41,6 +41,7 @@ func main() {
 	var (
 		netAddr      string
 		defaultRoute string
+		bringup      string
 	)
 	cmdline, err := ioutil.ReadFile("/proc/cmdline")
 	if err != nil {
@@ -56,6 +57,8 @@ func main() {
 				netAddr = opt[idx+1:]
 			case "mk-init.defaultRoute":
 				defaultRoute = opt[idx+1:]
+			case "mk-init.bringup":
+				bringup = opt[idx+1:]
 			}
 		}
 	}
@@ -72,6 +75,9 @@ func main() {
 			fmt.Fprintf(os.Stderr, "Failed setting default route: %v\n", err)
 			os.Exit(1)
 		}
+	}
+	if bringup != "" {
+		unix.Exec(bringup, []string{bringup}, os.Environ())
 	}
 }
 

@@ -41,9 +41,6 @@ in
     binary = u-root-binary;
 
     mk-init = ./mk-init.go;
-    innerPath = lib.makeBinPath [pkgs.coreutils pkgs.gnugrep pkgs.openssl pkgs.htop pkgs.util-linux pkgs.findutils
-                                 pkgs.diffutils pkgs.nano pkgs.iproute2 pkgs.iputils
-                ];
     bringup = pkgs.writeScriptBin "bringup.sh" ''#!/bbin/elvish
       # Setup symlinks that most programs expect
       chmod 666 /dev/{null,urandom}
@@ -52,13 +49,13 @@ in
       ln -s -f /proc/self/fd/1 /dev/stdout
       ln -s -f /proc/self/fd/2 /dev/stderr
 
-      # Connect to the store
-      mkdir -p /nix/store
-      mkinit /nix/store
-
+      # Fake a user entry for root
+      mkdir -p /etc
       echo 'root:x:0:0:root:/root:/bin/bash' > /etc/passwd
 
-      exec ${pkgs.bash}/bin/bash -c 'PATH=${innerPath} exec ${pkgs.bashInteractive}/bin/bash -l'
+      # Final setup
+      mkdir -p /nix/store
+      exec mkinit /nix/store
       '';
 
     cpio = stdenv.mkDerivation {

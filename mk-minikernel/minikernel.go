@@ -18,8 +18,10 @@ var (
 	initrdPath      = flag.String("initrd-path", "result/initrd", "Path to the initrd.")
 	kernelPath      = flag.String("kernel-path", "result/vmlinux", "Path to the kernel image.")
 
-	id   = flag.String("id", "default", "The unique identifier of this instance.")
-	addr = flag.String("net", "198.51.100.1/30", "The network to use.")
+	id         = flag.String("id", "default", "The unique identifier of this instance.")
+	addr       = flag.String("net", "198.51.100.1/30", "The network to use.")
+	fsManifest = flag.String("fs-manifest", "", "The whitelisted set of nix store paths available in the minikernel.")
+	onBringup  = flag.String("on-bringup", "", "Store path to execute once the microVM comes up.")
 
 	numCores = flag.Int("cores", 2, "Number of cores the microVM should have.")
 	numMem   = flag.Int("mem_mb", 512, "Amount of memory the microVM should have in megabytes.")
@@ -133,8 +135,9 @@ func writeFirecrackerConfig(wd string, nc *netCtlr) error {
 	if err := json.NewEncoder(cf).Encode(map[string]interface{}{
 		"boot-source": map[string]interface{}{
 			"kernel_image_path": *kernelPath,
-			"boot_args":         fmt.Sprintf("console=ttyS0 reboot=k panic=1 i8042.noaux mk-init.IP=%s mk-init.defaultRoute=%s", nc.GuestAddr(), nc.hostAddr.IP.String()),
-			"initrd_path":       *initrdPath,
+			"boot_args": fmt.Sprintf("console=ttyS0 reboot=k panic=1 i8042.noaux mk-init.IP=%s mk-init.defaultRoute=%s mk-init.bringup=%s",
+				nc.GuestAddr(), nc.hostAddr.IP.String(), *onBringup),
+			"initrd_path": *initrdPath,
 		},
 		"drives": []string{},
 		"machine-config": map[string]interface{}{

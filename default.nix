@@ -34,11 +34,13 @@
     nix-9p = pkgs.callPackage ./nix-9p.nix { };
 
 
-    #Example
+    # Example
     demo-files = make-environment {
       name = "demo-files";
       startScript = ''#! ${pkgs.bash}/bin/bash
         echo 'hello from minikernel!'
+        echo 'ifconfig output:'
+        ${pkgs.inetutils}/bin/ifconfig
       '';
       extraPkgs = with pkgs;[ htop ];
     };
@@ -61,6 +63,9 @@
       name ? "",
       startScript ? "",
       extraPkgs ? [],
+      network ? "198.51.100.1/30",
+      cores ? 2,
+      mem_mb ? 512,
     }:
     let
       bringup = pkgs.writeScriptBin (name+"-bringup") startScript;
@@ -75,7 +80,9 @@
              --kernel-path "${kernel}/vmlinux" \
              --initrd-path "${initrd}" \
              --firecracker-path "${pkgs.firecracker}/bin/firecracker" \
-             --id "${name}"
+             --fs-manifest "${manifest}" \
+             --on-bringup "${bringup}/bin/${name+"-bringup"}" \
+             --id "${name}" --net "${network}" --cores "${builtins.toString cores}" --mem_mb "${builtins.toString mem_mb}"
       '';
     in
       pkgs.linkFarm name (
