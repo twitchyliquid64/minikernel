@@ -7,11 +7,11 @@ rustPlatform.buildRustPackage rec {
   src = fetchFromGitHub {
     owner = "twitchyliquid64";
     repo = pname;
-    rev = "1b50ab575d18c554971abb32b533dec12e6db861";
-    sha256 = "09jaq7mr4p7ailg1rq3ngnlwymr6q6n04pfj2hnmixsx15jnpklc";
+    rev = "89ef863d9c4ae847d730914c66786029b2b6c45f";
+    sha256 = "04b6idfmi5rxn6b67x5n1k9560spvj627fz2h53v0fw57frypzyv";
   };
 
-  cargoSha256 = "183rg7dzc13mwk8v0gfmxfn4hbk45fmnsv1jygm3lyndkgyf9r5g";
+  cargoSha256 = "09bab6gd95dhy232lq01za4kp5bwbz9j4isxiyw73y7yfhcpriyv";
 
   meta = with lib; {
     description = "A 9p to unix socket fs server for a subset of your nix store";

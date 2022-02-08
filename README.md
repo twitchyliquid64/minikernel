@@ -1,4 +1,20 @@
-## Test instructions
+# minikernel
+
+Run nix programs in an isolated, mini-VM. Great as a containment primitive.
+
+ * Minimal, hardened kernel
+ * Firecracker is used to make a strong security boundary
+ * Only a read-only subset of the nix store is exposed
+ * Startup time ~2 seconds (4 secs on my 2011 thinkpad)
+
+## Technicals
+
+ * Readonly nix store exposed over vsockets using 9p
+ * Firecracker + TAP interface provides networking
+ * Host-side nftables filtering/masquerade rules constrain networking
+ * Custom, u-root based initrd means very simple early userspace with minimal attack surface
+
+## Example
 
 ```
 sudo $(nix-build --show-trace --cores 24 -A demo-files)/launcher
@@ -16,15 +32,5 @@ This `demo-files` attribute is the result of this minikernel config:
         ${pkgs.inetutils}/bin/ifconfig
       '';
       extraPkgs = with pkgs;[ htop ];
-    };
-```
-
-
-## Useful commands
-
-```
-nix-build -A kernel
-nix-instantiate -A kernel
-
-nix repl default.nix
+    }
 ```
