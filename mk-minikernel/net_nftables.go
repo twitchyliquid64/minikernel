@@ -1,6 +1,8 @@
 package main
 
 import (
+	"fmt"
+
 	"github.com/google/nftables"
 	"github.com/google/nftables/binaryutil"
 	"github.com/google/nftables/expr"
@@ -80,10 +82,11 @@ type rulesNFTables struct {
 	postrouteChain *nftables.Chain
 	natCounter     *nftables.CounterObj
 
-	filterChain   *nftables.Chain
-	fwdOutCounter *nftables.CounterObj
-	fwdInCounter  *nftables.CounterObj
-	dropCounter   *nftables.CounterObj
+	filterForwardChain *nftables.Chain
+	filterOutputChain  *nftables.Chain
+	fwdOutCounter      *nftables.CounterObj
+	fwdInCounter       *nftables.CounterObj
+	dropCounter        *nftables.CounterObj
 }
 
 func (n *rulesNFTables) initTable(id string) error {
@@ -124,9 +127,16 @@ func (n *rulesNFTables) initTable(id string) error {
 		Name:  "drop",
 	}).(*nftables.CounterObj)
 
-	n.filterChain = n.nft.AddChain(&nftables.Chain{
+	n.filterForwardChain = n.nft.AddChain(&nftables.Chain{
 		Name:     "forward",
 		Hooknum:  nftables.ChainHookForward,
+		Priority: nftables.ChainPriorityFilter,
+		Table:    n.table,
+		Type:     nftables.ChainTypeFilter,
+	})
+	n.filterOutputChain = n.nft.AddChain(&nftables.Chain{
+		Name:     "output",
+		Hooknum:  nftables.ChainHookOutput,
 		Priority: nftables.ChainPriorityFilter,
 		Table:    n.table,
 		Type:     nftables.ChainTypeFilter,
@@ -146,10 +156,20 @@ func (n *rulesNFTables) makeFirewall(id string, tap netlink.Link, fw firewall) e
 		return err
 	}
 
+	if err := n.addFilterRulesToChain(tap, n.filterForwardChain, protoSet, denySet); err != nil {
+		return fmt.Errorf("adding filters (forward): %v", err)
+	}
+	if err := n.addFilterRulesToChain(tap, n.filterOutputChain, protoSet, denySet); err != nil {
+		return fmt.Errorf("adding filters (output: %v", err)
+	}
+	return nil
+}
+
+func (n *rulesNFTables) addFilterRulesToChain(tap netlink.Link, chain *nftables.Chain, protoSet, denySet *nftables.Set) error {
 	// Filter by protocol
 	n.nft.AddRule(&nftables.Rule{
 		Table: n.table,
-		Chain: n.filterChain,
+		Chain: chain,
 		Exprs: []expr.Any{
 			// Load meta-information 'output-interface ID' => reg 1
 			&expr.Meta{
@@ -183,7 +203,7 @@ func (n *rulesNFTables) makeFirewall(id string, tap netlink.Link, fw firewall) e
 	// Filter by destination IP
 	n.nft.AddRule(&nftables.Rule{
 		Table: n.table,
-		Chain: n.filterChain,
+		Chain: chain,
 		Exprs: []expr.Any{
 			// Load meta-information 'output-interface ID' => reg 1
 			&expr.Meta{
@@ -258,7 +278,7 @@ func (n *rulesNFTables) makeNAT(id string, tap netlink.Link) error {
 	// Add rule to count packets from our box IP.
 	n.nft.AddRule(&nftables.Rule{
 		Table: n.table,
-		Chain: n.filterChain,
+		Chain: n.filterForwardChain,
 		Exprs: []expr.Any{
 			// Load meta-information 'output-interface ID' => reg 1
 			&expr.Meta{
@@ -282,7 +302,7 @@ func (n *rulesNFTables) makeNAT(id string, tap netlink.Link) error {
 	// Add rule to count packets to our box IP.
 	n.nft.AddRule(&nftables.Rule{
 		Table: n.table,
-		Chain: n.filterChain,
+		Chain: n.filterForwardChain,
 		Exprs: []expr.Any{
 			// Load meta-information 'output-interface ID' => reg 1
 			&expr.Meta{

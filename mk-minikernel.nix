@@ -6,7 +6,7 @@
 
    src = ./mk-minikernel;
 
-   vendorSha256 = "0rmkyn3dvsh36897hvadyyyn8dpcr1wr46xzsz8nfvqyxx5nh35v"; # lib.fakeSha256;
+   vendorSha256 = "0w9iyvp5sc0x6rbl1vmahfdivpnjd5cal3x74kxx3sz9j00lk0xa"; # lib.fakeSha256;
 
    buildInputs = [];
 
