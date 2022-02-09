@@ -17,7 +17,7 @@ Run nix programs in an isolated, mini-VM. Great as a containment primitive.
 ## Example
 
 ```
-sudo $(nix-build --show-trace --cores 24 -A demo-files)/launcher
+sudo $(nix-build --show-trace --cores 24 -A demo-files)/bin/demo-files
 ```
 
 This `demo-files` attribute is the result of this minikernel config:

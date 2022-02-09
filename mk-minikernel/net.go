@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/nftables"
 	"github.com/vishvananda/netlink"
+	"inet.af/netaddr"
 )
 
 type netCtlr struct {
@@ -43,10 +44,34 @@ func (nc *netCtlr) GuestAddr() string {
 	return (&g).String()
 }
 
+func (nc *netCtlr) computeFirewall() (firewall, error) {
+	var b netaddr.IPSetBuilder
+	denySet, err := computeDenylist(&b)
+	if err != nil {
+		return firewall{}, fmt.Errorf("computing denylist: %v", err)
+	}
+
+	return firewall{
+		allowUDP:  *allowUDP,
+		allowTCP:  *allowTCP,
+		allowICMP: *allowICMP,
+		deny:      *denySet,
+	}, nil
+}
+
 func (nc *netCtlr) BringUp() error {
 	if err := ipv4EnableForwarding(true); err != nil {
 		return err
 	}
+
+	fw, err := nc.computeFirewall()
+	if err != nil {
+		return fmt.Errorf("computing firewall: %v", err)
+	}
+	if err := nc.nft.makeFirewall(*id, nc.link, fw); err != nil {
+		return err
+	}
+
 	if err := nc.nft.makeNAT(*id, nc.link); err != nil {
 		return fmt.Errorf("nat setup: %v", err)
 	}

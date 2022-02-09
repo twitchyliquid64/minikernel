@@ -5,4 +5,6 @@ go 1.16
 require (
 	github.com/google/nftables v0.0.0-20220206174406-91d3b4571db1
 	github.com/vishvananda/netlink v1.1.0
+	golang.org/x/sys v0.0.0-20211205182925-97ca703d548d
+	inet.af/netaddr v0.0.0-20211027220019-c74959edd3b6 // indirect
 )

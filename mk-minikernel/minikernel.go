@@ -9,8 +9,22 @@ import (
 	"os/exec"
 	"os/signal"
 	"path"
+	"strings"
 	"syscall"
+
+	"inet.af/netaddr"
 )
+
+type arrayStringFlag []string
+
+func (i *arrayStringFlag) String() string {
+	return strings.Join([]string(*i), ",")
+}
+
+func (i *arrayStringFlag) Set(value string) error {
+	*i = append(*i, value)
+	return nil
+}
 
 var (
 	nix9pPath       = flag.String("nix9p-path", "result/nix-9p", "Path to the nix-9p binary.")
@@ -25,9 +39,43 @@ var (
 
 	numCores = flag.Int("cores", 2, "Number of cores the microVM should have.")
 	numMem   = flag.Int("mem_mb", 512, "Amount of memory the microVM should have in megabytes.")
+
+	allowUDP    = flag.Bool("allow_udp", false, "Whether to permit UDP traffic.")
+	allowTCP    = flag.Bool("allow_tcp", false, "Whether to permit TCP traffic.")
+	allowICMP   = flag.Bool("allow_icmp", false, "Whether to permit ICMP traffic.")
+	denySubnets arrayStringFlag
+	denyRanges  arrayStringFlag
 )
 
+func computeDenylist(b *netaddr.IPSetBuilder) (*netaddr.IPSet, error) {
+	for _, s := range denySubnets {
+		p, err := netaddr.ParseIPPrefix(s)
+		if err != nil {
+			return nil, fmt.Errorf("parsing %q: %v", s, err)
+		}
+		b.AddPrefix(p)
+	}
+	for _, r := range denyRanges {
+		spl := strings.Split(r, "-")
+		if len(spl) < 2 {
+			return nil, fmt.Errorf("parsing %q: %s", r, "expecting '-' separated ip range")
+		}
+		f, err := netaddr.ParseIP(spl[0])
+		if err != nil {
+			return nil, fmt.Errorf("parsing %q from-address: %v", r, err)
+		}
+		t, err := netaddr.ParseIP(spl[1])
+		if err != nil {
+			return nil, fmt.Errorf("parsing %q to-address: %v", r, err)
+		}
+		b.AddRange(netaddr.IPRangeFrom(f, t))
+	}
+	return b.IPSet()
+}
+
 func main() {
+	flag.Var(&denySubnets, "ip4-deny-subnet", "IP networks which should not be externally reachable.")
+	flag.Var(&denyRanges, "ip4-deny-range", "IP address ranges which should not be externally reachable.")
 	flag.Parse()
 
 	mk, err := newMinikernel()
