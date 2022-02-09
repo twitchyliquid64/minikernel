@@ -1,10 +1,10 @@
 package main
 
 import (
-	"net"
-
 	"github.com/google/nftables"
+	"github.com/google/nftables/binaryutil"
 	"github.com/google/nftables/expr"
+	"github.com/vishvananda/netlink"
 )
 
 type rulesNFTables struct {
@@ -69,7 +69,7 @@ func (n *rulesNFTables) initTable(id string) error {
 	return nil
 }
 
-func (n *rulesNFTables) makeNAT(id string, guestAddr net.IP) error {
+func (n *rulesNFTables) makeNAT(id string, tap netlink.Link) error {
 	if n.table == nil {
 		if err := n.initTable(id); err != nil {
 			return err
@@ -81,18 +81,16 @@ func (n *rulesNFTables) makeNAT(id string, guestAddr net.IP) error {
 		Table: n.table,
 		Chain: n.postrouteChain,
 		Exprs: []expr.Any{
-			// payload load 4b @ network header + 12 => reg 1
-			&expr.Payload{
-				DestRegister: 1,
-				Base:         expr.PayloadBaseNetworkHeader,
-				Offset:       12,
-				Len:          4,
+			// Load meta-information 'output-interface ID' => reg 1
+			&expr.Meta{
+				Key:      expr.MetaKeyIIF,
+				Register: 1,
 			},
 			// cmp eq reg 1 0x0245a8c0
 			&expr.Cmp{
 				Op:       expr.CmpOpEq,
 				Register: 1,
-				Data:     guestAddr.To4(),
+				Data:     binaryutil.NativeEndian.PutUint32(uint32(tap.Attrs().Index)),
 			},
 			// counter 'natted'
 			&expr.Objref{
@@ -109,18 +107,16 @@ func (n *rulesNFTables) makeNAT(id string, guestAddr net.IP) error {
 		Table: n.table,
 		Chain: n.filterChain,
 		Exprs: []expr.Any{
-			// payload load 4b @ network header + 12 => reg 1
-			&expr.Payload{
-				DestRegister: 1,
-				Base:         expr.PayloadBaseNetworkHeader,
-				Offset:       12,
-				Len:          4,
+			// Load meta-information 'output-interface ID' => reg 1
+			&expr.Meta{
+				Key:      expr.MetaKeyIIF,
+				Register: 1,
 			},
 			// cmp eq reg 1 0x0245a8c0
 			&expr.Cmp{
 				Op:       expr.CmpOpEq,
 				Register: 1,
-				Data:     guestAddr.To4(),
+				Data:     binaryutil.NativeEndian.PutUint32(uint32(tap.Attrs().Index)),
 			},
 			// counter 'fwded'
 			&expr.Objref{
@@ -135,18 +131,16 @@ func (n *rulesNFTables) makeNAT(id string, guestAddr net.IP) error {
 		Table: n.table,
 		Chain: n.filterChain,
 		Exprs: []expr.Any{
-			// payload load 4b @ network header + 16 => reg 1
-			&expr.Payload{
-				DestRegister: 1,
-				Base:         expr.PayloadBaseNetworkHeader,
-				Offset:       16,
-				Len:          4,
+			// Load meta-information 'output-interface ID' => reg 1
+			&expr.Meta{
+				Key:      expr.MetaKeyOIF,
+				Register: 1,
 			},
 			// cmp eq reg 1 0x0245a8c0
 			&expr.Cmp{
 				Op:       expr.CmpOpEq,
 				Register: 1,
-				Data:     guestAddr.To4(),
+				Data:     binaryutil.NativeEndian.PutUint32(uint32(tap.Attrs().Index)),
 			},
 			// counter 'fwded'
 			&expr.Objref{

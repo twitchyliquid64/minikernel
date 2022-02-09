@@ -47,7 +47,7 @@ func (nc *netCtlr) BringUp() error {
 	if err := ipv4EnableForwarding(true); err != nil {
 		return err
 	}
-	if err := nc.nft.makeNAT(*id, nc.guestAddr().IP); err != nil {
+	if err := nc.nft.makeNAT(*id, nc.link); err != nil {
 		return fmt.Errorf("nat setup: %v", err)
 	}
 	if err := netlink.LinkSetUp(nc.link); err != nil {
