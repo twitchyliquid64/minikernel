@@ -7,7 +7,6 @@ import (
 
 	"github.com/google/nftables"
 	"github.com/vishvananda/netlink"
-	"inet.af/netaddr"
 )
 
 type netCtlr struct {
@@ -45,8 +44,7 @@ func (nc *netCtlr) GuestAddr() string {
 }
 
 func (nc *netCtlr) computeFirewall() (firewall, error) {
-	var b netaddr.IPSetBuilder
-	denySet, err := computeDenylist(&b)
+	denySet, allowSet, err := computeIPLists()
 	if err != nil {
 		return firewall{}, fmt.Errorf("computing denylist: %v", err)
 	}
@@ -56,6 +54,7 @@ func (nc *netCtlr) computeFirewall() (firewall, error) {
 		allowTCP:  *allowTCP,
 		allowICMP: *allowICMP,
 		deny:      *denySet,
+		allow:     *allowSet,
 	}, nil
 }
 

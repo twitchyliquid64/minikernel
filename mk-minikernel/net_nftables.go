@@ -16,10 +16,10 @@ type firewall struct {
 	allowTCP  bool
 	allowUDP  bool
 
-	deny netaddr.IPSet
+	deny, allow netaddr.IPSet
 }
 
-func (fw *firewall) CreateSets(n *rulesNFTables) (*nftables.Set, *nftables.Set, error) {
+func (fw *firewall) CreateSets(n *rulesNFTables) (*nftables.Set, *nftables.Set, *nftables.Set, error) {
 	pSet := &nftables.Set{
 		Name:    "permitted_protos",
 		Table:   n.table,
@@ -38,7 +38,7 @@ func (fw *firewall) CreateSets(n *rulesNFTables) (*nftables.Set, *nftables.Set, 
 		pElements = append(pElements, nftables.SetElement{Key: []byte{unix.IPPROTO_ICMP}})
 	}
 	if err := n.nft.AddSet(pSet, pElements); err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	ipSet := &nftables.Set{
@@ -52,11 +52,11 @@ func (fw *firewall) CreateSets(n *rulesNFTables) (*nftables.Set, *nftables.Set, 
 	for _, r := range fw.deny.Ranges() {
 		from, err := r.From().MarshalBinary()
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, nil, err
 		}
 		to, err := r.To().MarshalBinary()
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, nil, err
 		}
 
 		iElements = append(iElements, nftables.SetElement{
@@ -69,9 +69,44 @@ func (fw *firewall) CreateSets(n *rulesNFTables) (*nftables.Set, *nftables.Set, 
 	}
 
 	if err := n.nft.AddSet(ipSet, iElements); err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
-	return pSet, ipSet, nil
+
+	var allowSet *nftables.Set
+	if !fw.allow.Equal(&netaddr.IPSet{}) {
+		allowSet = &nftables.Set{
+			Name:     "ip_allowlist",
+			Table:    n.table,
+			Interval: true,
+			KeyType:  nftables.TypeIPAddr,  // prefix
+			DataType: nftables.TypeInteger, // mask
+		}
+		var iElements []nftables.SetElement
+		for _, r := range fw.allow.Ranges() {
+			from, err := r.From().MarshalBinary()
+			if err != nil {
+				return nil, nil, nil, err
+			}
+			to, err := r.To().MarshalBinary()
+			if err != nil {
+				return nil, nil, nil, err
+			}
+
+			iElements = append(iElements, nftables.SetElement{
+				Key:         from,
+				IntervalEnd: false,
+			}, nftables.SetElement{
+				Key:         to,
+				IntervalEnd: true,
+			})
+		}
+
+		if err := n.nft.AddSet(allowSet, iElements); err != nil {
+			return nil, nil, nil, err
+		}
+	}
+
+	return pSet, ipSet, allowSet, nil
 }
 
 type rulesNFTables struct {
@@ -83,7 +118,7 @@ type rulesNFTables struct {
 	natCounter     *nftables.CounterObj
 
 	filterForwardChain *nftables.Chain
-	filterOutputChain  *nftables.Chain
+	filterInputChain   *nftables.Chain
 	fwdOutCounter      *nftables.CounterObj
 	fwdInCounter       *nftables.CounterObj
 	dropCounter        *nftables.CounterObj
@@ -134,9 +169,9 @@ func (n *rulesNFTables) initTable(id string) error {
 		Table:    n.table,
 		Type:     nftables.ChainTypeFilter,
 	})
-	n.filterOutputChain = n.nft.AddChain(&nftables.Chain{
-		Name:     "output",
-		Hooknum:  nftables.ChainHookOutput,
+	n.filterInputChain = n.nft.AddChain(&nftables.Chain{
+		Name:     "input",
+		Hooknum:  nftables.ChainHookInput,
 		Priority: nftables.ChainPriorityFilter,
 		Table:    n.table,
 		Type:     nftables.ChainTypeFilter,
@@ -151,29 +186,29 @@ func (n *rulesNFTables) makeFirewall(id string, tap netlink.Link, fw firewall) e
 		}
 	}
 
-	protoSet, denySet, err := fw.CreateSets(n)
+	protoSet, denySet, allowSet, err := fw.CreateSets(n)
 	if err != nil {
 		return err
 	}
 
-	if err := n.addFilterRulesToChain(tap, n.filterForwardChain, protoSet, denySet); err != nil {
+	if err := n.addFilterRulesToChain(tap, n.filterForwardChain, protoSet, denySet, allowSet); err != nil {
 		return fmt.Errorf("adding filters (forward): %v", err)
 	}
-	if err := n.addFilterRulesToChain(tap, n.filterOutputChain, protoSet, denySet); err != nil {
-		return fmt.Errorf("adding filters (output: %v", err)
+	if err := n.addFilterRulesToChain(tap, n.filterInputChain, protoSet, denySet, allowSet); err != nil {
+		return fmt.Errorf("adding filters (input: %v", err)
 	}
 	return nil
 }
 
-func (n *rulesNFTables) addFilterRulesToChain(tap netlink.Link, chain *nftables.Chain, protoSet, denySet *nftables.Set) error {
+func (n *rulesNFTables) addFilterRulesToChain(tap netlink.Link, chain *nftables.Chain, protoSet, denySet, allowSet *nftables.Set) error {
 	// Filter by protocol
 	n.nft.AddRule(&nftables.Rule{
 		Table: n.table,
 		Chain: chain,
 		Exprs: []expr.Any{
-			// Load meta-information 'output-interface ID' => reg 1
+			// Load meta-information 'input-interface ID' => reg 1
 			&expr.Meta{
-				Key:      expr.MetaKeyOIF,
+				Key:      expr.MetaKeyIIF,
 				Register: 1,
 			},
 			// cmp eq reg 1 0x0245a8c0
@@ -200,14 +235,11 @@ func (n *rulesNFTables) addFilterRulesToChain(tap netlink.Link, chain *nftables.
 			},
 		}})
 
-	// Filter by destination IP
-	n.nft.AddRule(&nftables.Rule{
-		Table: n.table,
-		Chain: chain,
-		Exprs: []expr.Any{
-			// Load meta-information 'output-interface ID' => reg 1
+	if allowSet != nil {
+		expression := []expr.Any{
+			// Load meta-information 'input-interface ID' => reg 1
 			&expr.Meta{
-				Key:      expr.MetaKeyOIF,
+				Key:      expr.MetaKeyIIF,
 				Register: 1,
 			},
 			// cmp eq reg 1 0x0245a8c0
@@ -216,14 +248,66 @@ func (n *rulesNFTables) addFilterRulesToChain(tap netlink.Link, chain *nftables.
 				Register: 1,
 				Data:     binaryutil.NativeEndian.PutUint32(uint32(tap.Attrs().Index)),
 			},
-			// payload load 4b @ network header + 12 => reg 1
+			// payload load 4b @ network header + 16 => reg 1
 			&expr.Payload{
 				DestRegister: 1,
 				Base:         expr.PayloadBaseNetworkHeader,
-				Offset:       12,
+				Offset:       16,
 				Len:          4,
 			},
-			// Match from target set
+			// Match from allowlist
+			&expr.Lookup{
+				SourceRegister: 1,
+				SetName:        allowSet.Name,
+				SetID:          allowSet.ID,
+			},
+		}
+
+		if chain == n.filterForwardChain {
+			expression = append(expression, &expr.Objref{
+				Type: 1,
+				Name: n.fwdOutCounter.Name,
+			})
+		}
+
+		expression = append(expression,
+			//[ immediate reg 0 accept ]
+			&expr.Verdict{
+				Kind: expr.VerdictAccept,
+			},
+		)
+
+		n.nft.AddRule(&nftables.Rule{
+			Table: n.table,
+			Chain: chain,
+			Exprs: expression,
+		})
+	}
+
+	// Filter by destination IP
+	n.nft.AddRule(&nftables.Rule{
+		Table: n.table,
+		Chain: chain,
+		Exprs: []expr.Any{
+			// Load meta-information 'input-interface ID' => reg 1
+			&expr.Meta{
+				Key:      expr.MetaKeyIIF,
+				Register: 1,
+			},
+			// cmp eq reg 1 0x0245a8c0
+			&expr.Cmp{
+				Op:       expr.CmpOpEq,
+				Register: 1,
+				Data:     binaryutil.NativeEndian.PutUint32(uint32(tap.Attrs().Index)),
+			},
+			// payload load 4b @ network header + 16 => reg 1
+			&expr.Payload{
+				DestRegister: 1,
+				Base:         expr.PayloadBaseNetworkHeader,
+				Offset:       16,
+				Len:          4,
+			},
+			// Match from denylist
 			&expr.Lookup{
 				SourceRegister: 1,
 				SetName:        denySet.Name,

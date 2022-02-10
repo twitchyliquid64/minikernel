@@ -45,37 +45,86 @@ var (
 	allowICMP   = flag.Bool("allow_icmp", false, "Whether to permit ICMP traffic.")
 	denySubnets arrayStringFlag
 	denyRanges  arrayStringFlag
+
+	allowAddresses arrayStringFlag
+	allowSubnets   arrayStringFlag
+	allowRanges    arrayStringFlag
 )
 
-func computeDenylist(b *netaddr.IPSetBuilder) (*netaddr.IPSet, error) {
+func computeIPLists() (*netaddr.IPSet, *netaddr.IPSet, error) {
+	var deny, allow netaddr.IPSetBuilder
+
 	for _, s := range denySubnets {
 		p, err := netaddr.ParseIPPrefix(s)
 		if err != nil {
-			return nil, fmt.Errorf("parsing %q: %v", s, err)
+			return nil, nil, fmt.Errorf("parsing %q: %v", s, err)
 		}
-		b.AddPrefix(p)
+		deny.AddPrefix(p)
 	}
 	for _, r := range denyRanges {
 		spl := strings.Split(r, "-")
 		if len(spl) < 2 {
-			return nil, fmt.Errorf("parsing %q: %s", r, "expecting '-' separated ip range")
+			return nil, nil, fmt.Errorf("parsing %q: %s", r, "expecting '-' separated ip range")
 		}
 		f, err := netaddr.ParseIP(spl[0])
 		if err != nil {
-			return nil, fmt.Errorf("parsing %q from-address: %v", r, err)
+			return nil, nil, fmt.Errorf("parsing %q from-address: %v", r, err)
 		}
 		t, err := netaddr.ParseIP(spl[1])
 		if err != nil {
-			return nil, fmt.Errorf("parsing %q to-address: %v", r, err)
+			return nil, nil, fmt.Errorf("parsing %q to-address: %v", r, err)
 		}
-		b.AddRange(netaddr.IPRangeFrom(f, t))
+		deny.AddRange(netaddr.IPRangeFrom(f, t))
 	}
-	return b.IPSet()
+
+	for _, a := range allowAddresses {
+		addr, err := netaddr.ParseIP(a)
+		if err != nil {
+			return nil, nil, fmt.Errorf("parsing %q allow-address: %v", a, err)
+		}
+		allow.Add(addr)
+	}
+	for _, s := range allowSubnets {
+		p, err := netaddr.ParseIPPrefix(s)
+		if err != nil {
+			return nil, nil, fmt.Errorf("parsing %q: %v", s, err)
+		}
+		allow.AddPrefix(p)
+	}
+	for _, r := range allowRanges {
+		spl := strings.Split(r, "-")
+		if len(spl) < 2 {
+			return nil, nil, fmt.Errorf("parsing %q: %s", r, "expecting '-' separated ip range")
+		}
+		f, err := netaddr.ParseIP(spl[0])
+		if err != nil {
+			return nil, nil, fmt.Errorf("parsing %q from-address: %v", r, err)
+		}
+		t, err := netaddr.ParseIP(spl[1])
+		if err != nil {
+			return nil, nil, fmt.Errorf("parsing %q to-address: %v", r, err)
+		}
+		allow.AddRange(netaddr.IPRangeFrom(f, t))
+	}
+
+	d, err := deny.IPSet()
+	if err != nil {
+		return nil, nil, fmt.Errorf("denylist: %v", err)
+	}
+	a, err := allow.IPSet()
+	if err != nil {
+		return nil, nil, fmt.Errorf("allowlist: %v", err)
+	}
+
+	return d, a, nil
 }
 
 func main() {
 	flag.Var(&denySubnets, "ip4-deny-subnet", "IP networks which should not be externally reachable.")
 	flag.Var(&denyRanges, "ip4-deny-range", "IP address ranges which should not be externally reachable.")
+	flag.Var(&allowAddresses, "ip4-allow-addr", "IP address which should be reachable. Defaults to all if no ip-allow-* flags specified.")
+	flag.Var(&allowSubnets, "ip4-allow-subnet", "IP networks which should be reachable. Defaults to all if no ip-allow-* flags specified.")
+	flag.Var(&allowRanges, "ip4-allow-range", "IP address ranges which should be reachable. Defaults to all if no ip-allow-* flags specified.")
 	flag.Parse()
 
 	mk, err := newMinikernel()

@@ -59,7 +59,11 @@
       network ? "198.51.100.1/30",
       deny_subnets ? ["10.0.0.0/8" "172.16.0.0/16" "192.168.1.1/24"],
       deny_ranges ? [],
-      allow_udp ? true, allow_tcp ? true, allow_icmp ? false,
+      allow_udp ? true, allow_tcp ? true, allow_icmp ? true,
+
+      allow_ips ? [],
+      allow_subnets ? [],
+      allow_ranges ? [],
     }:
     let
       bringup = pkgs.writeScriptBin (name+"-bringup") startScript;
@@ -68,6 +72,12 @@
         paths = [ bringup ] ++ extraPkgs;
       });
 
+      _allow_ips = builtins.concatStringsSep " "
+        (pkgs.lib.forEach allow_ips (x: "--ip4-allow-addr ${x}"));
+      _allow_subnets = builtins.concatStringsSep " "
+        (pkgs.lib.forEach allow_subnets (x: "--ip4-allow-subnet ${x}"));
+      _allow_ranges = builtins.concatStringsSep " "
+        (pkgs.lib.forEach allow_ranges (x: "--ip4-allow-range ${x}"));
       _deny_subnets = builtins.concatStringsSep " "
         (pkgs.lib.forEach deny_subnets (x: "--ip4-deny-subnet ${x}"));
       _deny_ranges = builtins.concatStringsSep " "
@@ -86,6 +96,6 @@
              --fs-manifest "${manifest}" \
              --on-bringup "${bringup}/bin/${name+"-bringup"}" \
              --id "${name}" --net "${network}" --cores "${builtins.toString cores}" --mem_mb "${builtins.toString mem_mb}" \
-             ${_deny_subnets} ${_deny_ranges} ${_proto_flags}
+             ${_deny_subnets} ${_deny_ranges} ${_proto_flags} ${_allow_ips} ${_allow_subnets} ${_allow_ranges}
       '';
   }
