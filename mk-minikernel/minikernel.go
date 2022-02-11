@@ -12,6 +12,7 @@ import (
 	"strings"
 	"syscall"
 
+	"github.com/imdario/mergo"
 	"inet.af/netaddr"
 )
 
@@ -40,15 +41,16 @@ var (
 	numCores = flag.Int("cores", 2, "Number of cores the microVM should have.")
 	numMem   = flag.Int("mem_mb", 512, "Amount of memory the microVM should have in megabytes.")
 
-	allowUDP    = flag.Bool("allow_udp", false, "Whether to permit UDP traffic.")
-	allowTCP    = flag.Bool("allow_tcp", false, "Whether to permit TCP traffic.")
-	allowICMP   = flag.Bool("allow_icmp", false, "Whether to permit ICMP traffic.")
-	denySubnets arrayStringFlag
-	denyRanges  arrayStringFlag
-
+	allowUDP       = flag.Bool("allow_udp", false, "Whether to permit UDP traffic.")
+	allowTCP       = flag.Bool("allow_tcp", false, "Whether to permit TCP traffic.")
+	allowICMP      = flag.Bool("allow_icmp", false, "Whether to permit ICMP traffic.")
+	denySubnets    arrayStringFlag
+	denyRanges     arrayStringFlag
 	allowAddresses arrayStringFlag
 	allowSubnets   arrayStringFlag
 	allowRanges    arrayStringFlag
+
+	unsafeFirecrackerOverrides = flag.String("unsafe_firecracker_overrides", "", "A JSON structure to arbitrarily override some configuration. Use at your own risk.")
 )
 
 func computeIPLists() (*netaddr.IPSet, *netaddr.IPSet, error) {
@@ -229,7 +231,7 @@ func writeFirecrackerConfig(wd string, nc *netCtlr) error {
 		return fmt.Errorf("conf: %v", err)
 	}
 
-	if err := json.NewEncoder(cf).Encode(map[string]interface{}{
+	out := map[string]interface{}{
 		"boot-source": map[string]interface{}{
 			"kernel_image_path": *kernelPath,
 			"boot_args": fmt.Sprintf("console=ttyS0 reboot=k panic=1 i8042.noaux mk-init.IP=%s mk-init.defaultRoute=%s mk-init.bringup=%s",
@@ -256,7 +258,19 @@ func writeFirecrackerConfig(wd string, nc *netCtlr) error {
 			"uds_path":  path.Join(wd, fsSockName),
 			"guest_cid": 3,
 		},
-	}); err != nil {
+	}
+
+	if *unsafeFirecrackerOverrides != "" {
+		overlay := map[string]interface{}{}
+		if err := json.Unmarshal([]byte(*unsafeFirecrackerOverrides), &overlay); err != nil {
+			return fmt.Errorf("unsafe_firecracker_overrides: %v", err)
+		}
+		if err := mergo.Map(&out, overlay, mergo.WithSliceDeepCopy); err != nil {
+			return fmt.Errorf("unsafe_firecracker_overrides: failed merge: %v", err)
+		}
+	}
+
+	if err := json.NewEncoder(cf).Encode(out); err != nil {
 		return fmt.Errorf("conf write: %v", err)
 	}
 

@@ -64,6 +64,8 @@
       allow_ips ? [],
       allow_subnets ? [],
       allow_ranges ? [],
+
+      unsafe_firecracker_overrides ? null,
     }:
     let
       bringup = pkgs.writeScriptBin (name+"-bringup") startScript;
@@ -71,6 +73,11 @@
         name = (name+"-manifest");
         paths = [ bringup ] ++ extraPkgs;
       });
+
+      _fc_overrides = if unsafe_firecracker_overrides != null then
+        "--unsafe_firecracker_overrides " + (
+          pkgs.lib.escapeShellArg (builtins.toJSON unsafe_firecracker_overrides)
+        ) else "";
 
       _allow_ips = builtins.concatStringsSep " "
         (pkgs.lib.forEach allow_ips (x: "--ip4-allow-addr ${x}"));
@@ -96,6 +103,7 @@
              --fs-manifest "${manifest}" \
              --on-bringup "${bringup}/bin/${name+"-bringup"}" \
              --id "${name}" --net "${network}" --cores "${builtins.toString cores}" --mem_mb "${builtins.toString mem_mb}" \
-             ${_deny_subnets} ${_deny_ranges} ${_proto_flags} ${_allow_ips} ${_allow_subnets} ${_allow_ranges}
+             ${_deny_subnets} ${_deny_ranges} ${_proto_flags} ${_allow_ips} ${_allow_subnets} ${_allow_ranges} \
+             ${_fc_overrides}
       '';
   }
