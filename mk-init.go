@@ -7,12 +7,18 @@ import (
 	"io/ioutil"
 	"net"
 	"os"
+	"runtime"
 	"strings"
 
+	"github.com/u-root/u-root/pkg/libinit"
 	"github.com/u-root/u-root/pkg/mount"
 	"github.com/vishvananda/netlink"
 	"golang.org/x/sys/unix"
 )
+
+func init() {
+	runtime.LockOSThread()
+}
 
 var (
 	cid  = flag.Int("cid", 2, "Host CID to connect to")
@@ -25,6 +31,11 @@ func main() {
 		fmt.Fprintln(os.Stderr, "Error: Mountpoint must be provided")
 		os.Exit(1)
 	}
+
+	// Brought across from the default init program in u-root.
+	libinit.SetEnv()
+	libinit.CreateRootfs()
+	libinit.NetInit()
 
 	// Mount the nix store
 	fd, err := nixfs_connect()

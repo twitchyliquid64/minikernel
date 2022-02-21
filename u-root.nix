@@ -42,20 +42,8 @@ in
 
     mk-init = ./mk-init.go;
     bringup = pkgs.writeScriptBin "bringup.sh" ''#!/bbin/elvish
-      # Setup symlinks that most programs expect
-      chmod 666 /dev/{null,urandom}
-      ln -s -f /proc/self/fd /dev/fd
-      ln -s -f /proc/self/fd/0 /dev/stdin
-      ln -s -f /proc/self/fd/1 /dev/stdout
-      ln -s -f /proc/self/fd/2 /dev/stderr
-
-      # Fake a user entry for root
-      mkdir -p /etc
-      echo 'root:x:0:0:root:/root:/bin/bash' > /etc/passwd
-
-      # Final setup
-      mkdir -p /nix/store
-      exec mkinit /nix/store
+      /bbin/mkdir -p /nix/store
+      exec /bbin/mkinit /nix/store
       '';
 
     cpio = stdenv.mkDerivation {
@@ -84,7 +72,7 @@ in
         ${binary}/u-root -o "$out" \
           -base=/dev/null \
           -files "${bringup}/bin/bringup.sh:bringup" \
-          -uinitcmd '/bringup' \
+          -initcmd '/bringup' \
           core boot ./mkinit
       '';
     };
