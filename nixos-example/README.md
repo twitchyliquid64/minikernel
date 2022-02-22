@@ -1,0 +1,1 @@
+`sudo $(nix-build --no-out-link ./)/bin/nixos-example`

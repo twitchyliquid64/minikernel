@@ -16,6 +16,14 @@ Run nix programs in an isolated, mini-VM. Great as a containment primitive.
 
 ## Example
 
+There are two main interfaces for defining minikernels: `make-environment`, and `make-nixos-environment`.
+
+
+#### make-environment
+
+Use `make-environment` when you need some programs from nixpkgs, but otherwise dont care about having
+a running nixos system with systemd and all that jazz.
+
 ```
 sudo $(nix-build --show-trace --cores 24 -A demo-files)/bin/demo-files
 ```
@@ -34,3 +42,11 @@ This `demo-files` attribute is the result of this minikernel config:
       extraPkgs = with pkgs;[ htop ];
     }
 ```
+
+#### make-nixos-environment
+
+Use `make-nixos-environment` when you want to boot nixos in your minikernel and configure your
+minikernel as if it was a nixos system.
+Due to the use of virtualization and a minimal kernel not all features will work.
+
+See `nixos-example/` for an example of this.

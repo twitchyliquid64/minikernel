@@ -49,7 +49,7 @@
     # startScript is run by the guest once it comes up, and additionally
     # extraPkgs are available within the guest.
     make-environment = {
-      name ? "",
+      name,
       startScript ? "",
       extraPkgs ? [],
 
@@ -106,4 +106,56 @@
              ${_deny_subnets} ${_deny_ranges} ${_proto_flags} ${_allow_ips} ${_allow_subnets} ${_allow_ranges} \
              ${_fc_overrides}
       '';
+
+# Creates a minikernel using the provided nixos closure.
+make-nixos-environment = {
+      nixos,
+      name,
+
+      cores ? 2,
+      mem_mb ? 512,
+
+      network ? "198.51.100.1/30",
+      deny_subnets ? ["10.0.0.0/8" "172.16.0.0/16" "192.168.1.1/24"],
+      deny_ranges ? [],
+      allow_udp ? true, allow_tcp ? true, allow_icmp ? true,
+
+      allow_ips ? [],
+      allow_subnets ? [],
+      allow_ranges ? [],
+
+      unsafe_firecracker_overrides ? null,
+  }:
+  make-environment {
+      inherit name cores mem_mb;
+      inherit network deny_subnets deny_ranges allow_udp allow_tcp allow_icmp;
+      inherit allow_ips allow_subnets allow_ranges;
+      inherit unsafe_firecracker_overrides;
+
+      startScript = ''#! ${nixos.pkgs.bash}/bin/bash
+      set -e
+        
+      ${pkgs.coreutils}/bin/rm /init
+
+      # Make the root filesystem look mostly like
+      # the toplevel environment.
+      for p in ${nixos.config.system.build.toplevel}/*; do
+        base=$(${nixos.pkgs.coreutils}/bin/basename $p)
+        dest=$(${nixos.pkgs.coreutils}/bin/readlink $p || true)
+
+        if [[ $base == "etc" || $base == "bin" ]]; then
+          continue
+        fi
+
+        if [[ $dest == "" ]]; then
+          ${nixos.pkgs.coreutils}/bin/ln -sv $p "/$base"
+        else
+          ${nixos.pkgs.coreutils}/bin/ln -sv $dest "/$base"
+        fi
+      done
+
+      exec ${nixos.config.system.build.toplevel}/init
+      '';
+      extraPkgs = [ nixos.config.system.build.toplevel ];
+    };
   }
