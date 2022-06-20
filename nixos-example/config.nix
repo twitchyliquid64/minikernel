@@ -1,4 +1,4 @@
- {config, pkgs, boot, ...}:
+ {config, pkgs, boot, lib, ...}:
 {
   # Make assertions pass
   boot.loader.grub.enable = false;
@@ -32,8 +32,44 @@
 	time.timeZone = "America/Los_Angeles";
 
 
+  # Fonts
+  fonts.fontDir.enable = true;
+  fonts.fonts = with pkgs; [
+    freefont_ttf
+    liberation_ttf
+  ];
+
   # Random crap
+  environment.etc.swayconf = {
+    mode = "0644";
+    text = ''
+      exec wayvnc 0.0.0.0 8080
+      bindsym o+Return exec foot
+    '';
+  };
+
+  system.activationScripts.etc = lib.stringAfter [ "users" "groups" ]
+    ''
+    echo 'if [[ $(tty) == "/dev/ttyS0" ]]; then' >> /home/xxx/.bash_login
+    echo '  sleep 2 && headless' >> /home/xxx/.bash_login
+    echo 'fi' >> /home/xxx/.bash_login
+    '';
+
   environment.systemPackages = with pkgs; [
-    htop sudo
+    htop sudo sway-unwrapped wayvnc foot chromium
+
+    (
+      pkgs.writeShellScriptBin "headless" ''
+      export WLR_BACKENDS=headless
+      export WLR_RENDERER=pixman
+      export WLR_LIBINPUT_NO_DEVICES=1
+      export WAYLAND_DISPLAY=wayland-1
+      export XDG_RUNTIME_DIR=/tmp
+      export XDG_SESSION_TYPE=wayland
+      export WLR_RENDERER_ALLOW_SOFTWARE=1
+
+      exec ${sway-unwrapped}/bin/sway -c /etc/swayconf
+      ''
+    )
   ];
 }
