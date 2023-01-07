@@ -20,6 +20,8 @@ func setupFS(wd string) (*fsDaemon, error) {
 	d := fsDaemon{
 		proc: exec.Command(*nix9pPath, path.Join(wd, fsSockName+"_1234"), "/nix/store"),
 	}
+	// d.proc.Stderr = os.Stderr
+	// d.proc.Stdout = os.Stdout
 	if *fsManifest != "" {
 		d.proc.Args = append(d.proc.Args, *fsManifest)
 	}

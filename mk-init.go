@@ -41,11 +41,11 @@ func main() {
 	fd, err := nixfs_connect()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to open connection: %v\n", err)
-		os.Exit(1)
+		os.Exit(2)
 	}
 	if _, err = mount.Mount("9p", flag.Arg(0), "9p", fmt.Sprintf("version=9p2000.L,trans=fd,rfdno=%d,wfdno=%d,cache=loose,ro", fd, fd), 0); err != nil {
 		fmt.Fprintf(os.Stderr, "Mount failed: %v\n", err)
-		os.Exit(1)
+		os.Exit(3)
 	}
 
 	// Parse out instructions for networking and next stage
@@ -57,7 +57,7 @@ func main() {
 	cmdline, err := ioutil.ReadFile("/proc/cmdline")
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed reading commandline: %v\n", err)
-		os.Exit(1)
+		os.Exit(4)
 	}
 	spl := strings.Split(strings.TrimSpace(string(cmdline)), " ")
 	for _, opt := range spl {
@@ -78,13 +78,13 @@ func main() {
 	if netAddr != "" {
 		if err := setNetAddr(netAddr); err != nil {
 			fmt.Fprintf(os.Stderr, "Failed setting network: %v\n", err)
-			os.Exit(1)
+			os.Exit(5)
 		}
 	}
 	if defaultRoute != "" {
 		if err := setDefaultRoute(defaultRoute); err != nil {
 			fmt.Fprintf(os.Stderr, "Failed setting default route: %v\n", err)
-			os.Exit(1)
+			os.Exit(6)
 		}
 	}
 	if bringup != "" {

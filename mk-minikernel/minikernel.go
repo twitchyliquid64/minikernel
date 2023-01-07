@@ -212,6 +212,7 @@ func newMinikernel() (*mk, error) {
 		return nil, fmt.Errorf("vmm conf: %v", err)
 	}
 
+	// , "--log-path", "/dev/pts/1", "--level", "DEBUG")
 	vmm := exec.Command(*firecrackerPath, "--no-api", "--config-file", path.Join(wd, "firecracker_config.json"))
 	vmm.Stdin = os.Stdin
 	vmm.Stdout = os.Stdout

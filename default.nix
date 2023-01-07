@@ -6,7 +6,7 @@
     config = nixos.config;
 
     kbuildFn = pkgs.callPackage <nixpkgs/pkgs/os-specific/linux/kernel/manual-config.nix> { inherit (pkgs) buildPackages;  };
-    baseKernel = pkgs.linuxKernel.packages.linux_5_18.kernel;
+    baseKernel = pkgs.linuxKernel.packages.linux_6_0.kernel;
     manualConfig = pkgs.linuxKernel.manualConfig;
 
     u-root = pkgs.callPackage ./u-root.nix { };
@@ -41,6 +41,7 @@
         echo 'hello from minikernel!'
         echo 'ifconfig output:'
         ${pkgs.inetutils}/bin/ifconfig
+        ${pkgs.bash}/bin/bash
       '';
       extraPkgs = with pkgs;[ htop ];
     };
