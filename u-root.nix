@@ -3,8 +3,8 @@ let
   u-root-source = fetchFromGitHub {
     owner = "u-root";
     repo = "u-root";
-    rev = "236bcb5a057c69b708f1844e93d97e248a103c05";
-    sha256 = "0hx5zv5mry80ywpbi5nr7ikpixy4f6b8rv2c8qh54614cgjkydjw"; # use nix-prefetch-git
+    rev = "4dad982f78a72202985296afdfbc47c274ccc944";
+    sha256 = "15d75nyjl3hy77a0wa8plgs0mbhvpvz846rm7k01586s1ci2s512"; # use nix-prefetch-git
   };
   u-root-binary = buildGoPackage rec {
    name = "u-root";

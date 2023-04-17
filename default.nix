@@ -6,7 +6,7 @@
     config = nixos.config;
 
     kbuildFn = pkgs.callPackage <nixpkgs/pkgs/os-specific/linux/kernel/manual-config.nix> { inherit (pkgs) buildPackages;  };
-    baseKernel = pkgs.linuxKernel.packages.linux_6_0.kernel;
+    baseKernel = pkgs.linuxKernel.packages.linux_6_2.kernel;
     manualConfig = pkgs.linuxKernel.manualConfig;
 
     u-root = pkgs.callPackage ./u-root.nix { };
